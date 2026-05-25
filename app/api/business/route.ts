@@ -1,6 +1,7 @@
 import { auth } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase/server';
+import { toE164 } from '@/lib/utils';
 
 export async function POST(request: Request) {
   const { userId } = await auth();
@@ -13,10 +14,15 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
   }
 
+  const normalizedPhone = toE164(phone);
+  if (phone && !normalizedPhone) {
+    return NextResponse.json({ error: 'Invalid phone number' }, { status: 400 });
+  }
+
   const supabase = await createServiceClient();
 
   const trialEnds = new Date();
-  trialEnds.setDate(trialEnds.getDate() + 7);
+  trialEnds.setDate(trialEnds.getDate() + 14);
 
   const { data, error } = await supabase
     .from('businesses')
@@ -24,7 +30,7 @@ export async function POST(request: Request) {
       clerk_user_id: userId,
       name,
       website: website || null,
-      phone: phone || null,
+      phone: normalizedPhone,
       city: city || null,
       state: state || null,
       service_type,
@@ -43,8 +49,10 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  // Seed default automations
-  await supabase.rpc('seed_default_automations', { p_business_id: data.id });
+  const { error: seedError } = await supabase.rpc('seed_default_automations', {
+    p_business_id: data.id,
+  });
+  if (seedError) console.error('seed_default_automations error:', seedError);
 
   return NextResponse.json(data, { status: 201 });
 }
@@ -57,6 +65,14 @@ export async function PATCH(request: Request) {
   const { id, ...updates } = body;
 
   if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 });
+
+  if (typeof updates.phone === 'string' && updates.phone.length > 0) {
+    const normalized = toE164(updates.phone);
+    if (!normalized) {
+      return NextResponse.json({ error: 'Invalid phone number' }, { status: 400 });
+    }
+    updates.phone = normalized;
+  }
 
   const supabase = await createServiceClient();
 

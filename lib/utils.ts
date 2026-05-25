@@ -34,6 +34,16 @@ export function formatPhone(phone: string): string {
   return phone;
 }
 
+// Twilio rejects non-E.164. Always store and send in +1XXXXXXXXXX form (US-only for now).
+export function toE164(phone: string | null | undefined): string | null {
+  if (!phone) return null;
+  const digits = phone.replace(/\D/g, '');
+  if (digits.length === 10) return `+1${digits}`;
+  if (digits.length === 11 && digits.startsWith('1')) return `+${digits}`;
+  if (phone.startsWith('+') && digits.length >= 10) return `+${digits}`;
+  return null;
+}
+
 export function slugify(str: string): string {
   return str.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 }
@@ -63,6 +73,9 @@ export function exportLeadsCSV(leads: { name?: string | null; phone?: string | n
 }
 
 export function generateEmbedCode(businessId: string): string {
+  const baseUrl =
+    process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, '') ||
+    'https://neurobots.vercel.app';
   return `<!-- Neurobots.io Lead Capture Widget -->
 <script>
   (function(n,e,u,r){
@@ -71,6 +84,6 @@ export function generateEmbedCode(businessId: string): string {
     s.src=u+'/widget.js?id='+r;
     s.async=true;
     e.head.appendChild(s);
-  })(window,document,'https://neurobots.io','${businessId}');
+  })(window,document,'${baseUrl}','${businessId}');
 </script>`;
 }

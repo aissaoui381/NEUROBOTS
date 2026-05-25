@@ -14,14 +14,18 @@ export async function PATCH(
 
   const supabase = await createServiceClient();
 
-  // Verify ownership through business
+  // Verify ownership: automation must belong to a business owned by this user.
   const { data: automation } = await supabase
     .from('automations')
     .select('id, businesses!inner(clerk_user_id)')
     .eq('id', id)
     .single();
 
-  if (!automation) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+  type OwnedAutomation = { id: string; businesses: { clerk_user_id: string } };
+  const owner = (automation as unknown as OwnedAutomation | null)?.businesses?.clerk_user_id;
+  if (!automation || owner !== userId) {
+    return NextResponse.json({ error: 'Not found' }, { status: 404 });
+  }
 
   const { data, error } = await supabase
     .from('automations')

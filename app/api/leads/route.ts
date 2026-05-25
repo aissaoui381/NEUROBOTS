@@ -1,6 +1,7 @@
 import { auth } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase/server';
+import { toE164 } from '@/lib/utils';
 
 export async function POST(request: Request) {
   const { userId } = await auth();
@@ -10,6 +11,11 @@ export async function POST(request: Request) {
   const { name, phone, email, job_type, address, urgency, message, business_id } = body;
 
   if (!business_id) return NextResponse.json({ error: 'Missing business_id' }, { status: 400 });
+
+  const normalizedPhone = phone ? toE164(phone) : null;
+  if (phone && !normalizedPhone) {
+    return NextResponse.json({ error: 'Invalid phone number' }, { status: 400 });
+  }
 
   const supabase = await createServiceClient();
 
@@ -28,7 +34,7 @@ export async function POST(request: Request) {
     .insert({
       business_id,
       name: name || null,
-      phone: phone || null,
+      phone: normalizedPhone,
       email: email || null,
       job_type: job_type || null,
       address: address || null,

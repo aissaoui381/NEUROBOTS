@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase/server';
 import { anthropic, MODEL, buildWidgetSystemPrompt, generateLeadSummary } from '@/lib/claude';
 import { sendLeadAlertSMS } from '@/lib/twilio';
+import { toE164 } from '@/lib/utils';
 import type { Business, Lead, LeadUrgency } from '@/lib/supabase/types';
 
 const CORS = {
@@ -97,7 +98,7 @@ async function createLeadAndNotify(
     .insert({
       business_id: businessId,
       name: leadData.name,
-      phone: leadData.phone,
+      phone: toE164(leadData.phone),
       email: leadData.email,
       address: leadData.address,
       job_type: leadData.job_type,
