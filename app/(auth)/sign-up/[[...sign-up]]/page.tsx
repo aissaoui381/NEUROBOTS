@@ -32,6 +32,8 @@ export default function SignUpPage() {
         className="w-full"
       >
         <SignUp
+          forceRedirectUrl="/onboarding"
+          signInUrl="/sign-in"
           appearance={{
             variables: {
               colorPrimary: '#0EA5FF',
