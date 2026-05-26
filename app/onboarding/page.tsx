@@ -14,8 +14,8 @@ import type { ServiceType } from '@/lib/supabase/types';
 
 const schema = z.object({
   name: z.string().min(2, 'Business name is required'),
-  website: z.string().url('Must be a valid URL').optional().or(z.literal('')),
-  phone: z.string().min(10, 'Enter a valid phone number'),
+  website: z.string().optional(),
+  phone: z.string().min(7, 'Enter a valid phone number'),
   city: z.string().min(2, 'City is required'),
   state: z.string().min(2, 'State is required'),
   service_type: z.enum(['roofing', 'landscaping', 'hvac', 'electrical', 'cleaning'] as const),
@@ -53,12 +53,15 @@ export default function OnboardingStep1() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ...data, email: user?.primaryEmailAddress?.emailAddress }),
       });
-      if (!res.ok) throw new Error('Failed to save');
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({ error: `HTTP ${res.status}` }));
+        throw new Error(body.error || `HTTP ${res.status}`);
+      }
       const business = await res.json();
       sessionStorage.setItem('ob_business_id', business.id);
       router.push('/onboarding/widget');
-    } catch {
-      setError('Something went wrong. Please try again.');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Something went wrong. Please try again.');
       setSaving(false);
     }
   };

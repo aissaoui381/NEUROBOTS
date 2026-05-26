@@ -14,10 +14,9 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
   }
 
-  const normalizedPhone = toE164(phone);
-  if (phone && !normalizedPhone) {
-    return NextResponse.json({ error: 'Invalid phone number' }, { status: 400 });
-  }
+  // Try to normalize to E.164 for Twilio. If it's not US/can't be normalized,
+  // fall back to the raw input so onboarding doesn't get gated on phone format.
+  const normalizedPhone = phone ? (toE164(phone) ?? phone) : null;
 
   const supabase = await createServiceClient();
 
@@ -45,14 +44,17 @@ export async function POST(request: Request) {
     .single();
 
   if (error) {
-    console.error('POST /api/business error:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    console.error('POST /api/business error:', JSON.stringify(error));
+    return NextResponse.json(
+      { error: error.message, code: error.code, details: error.details, hint: error.hint },
+      { status: 500 },
+    );
   }
 
   const { error: seedError } = await supabase.rpc('seed_default_automations', {
     p_business_id: data.id,
   });
-  if (seedError) console.error('seed_default_automations error:', seedError);
+  if (seedError) console.error('seed_default_automations error:', JSON.stringify(seedError));
 
   return NextResponse.json(data, { status: 201 });
 }
